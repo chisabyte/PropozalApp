@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "ProposalForge - AI Proposal Generator",
+  "version": "1.0.0",
+  "description": "Generate AI-powered proposals directly from Upwork, Thumbtack, and other job platforms",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.upwork.com/*",
+    "https://*.thumbtack.com/*",
+    "https://*.fiverr.com/*",
+    "https://*.houzz.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.upwork.com/*",
+        "https://*.thumbtack.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
+
