@@ -95,12 +95,35 @@ export async function GET(req: Request) {
       proposalsByStatus[status] = (proposalsByStatus[status] || 0) + 1
     })
 
-    // Group by platform
-
+    // Group by platform (simple count)
     const proposalsByPlatform: Record<string, number> = {}
     actualProposals.forEach((p) => {
       const platform = p.platform || "Unknown"
       proposalsByPlatform[platform] = (proposalsByPlatform[platform] || 0) + 1
+    })
+
+    // Detailed platform stats with win rates, avg deal size, revenue
+    const platformStats: Record<string, { proposals: number; won: number; lost: number; winRate: number; avgDealSize: number; revenue: number }> = {}
+    actualProposals.forEach((p) => {
+      const platform = p.platform || "Unknown"
+      if (!platformStats[platform]) {
+        platformStats[platform] = { proposals: 0, won: 0, lost: 0, winRate: 0, avgDealSize: 0, revenue: 0 }
+      }
+      platformStats[platform].proposals++
+      if (p.status === "won" || p.signed_status === "signed") {
+        platformStats[platform].won++
+        platformStats[platform].revenue += p.project_value || 0
+      }
+      if (p.status === "lost") {
+        platformStats[platform].lost++
+      }
+    })
+    // Calculate win rates and avg deal sizes per platform
+    Object.keys(platformStats).forEach((platform) => {
+      const stats = platformStats[platform]
+      const totalDecided = stats.won + stats.lost
+      stats.winRate = totalDecided > 0 ? Math.round((stats.won / totalDecided) * 100) : (stats.won > 0 ? 100 : 0)
+      stats.avgDealSize = stats.won > 0 ? Math.round(stats.revenue / stats.won) : 0
     })
 
     // Calculate project values
@@ -232,6 +255,7 @@ export async function GET(req: Request) {
       expired, // Add expired count
       proposalsByStatus,
       proposalsByPlatform,
+      platformStats, // Detailed platform stats with win rates
       averageProjectValue: Math.round(averageProjectValue / 100), // Convert from cents
       totalProjectValue: Math.round(totalProjectValue / 100), // Convert from cents
       totalRevenue: Math.round(totalRevenue), // Already in dollars

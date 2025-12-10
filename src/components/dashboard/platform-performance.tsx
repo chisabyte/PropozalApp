@@ -52,55 +52,51 @@ export function PlatformPerformance() {
       if (!response.ok) throw new Error("Failed to fetch analytics")
       const analyticsData = await response.json()
 
-      // Process platform data
-      const platformMap: Record<string, PlatformStats> = {}
-
-      // Get proposals by platform from the API response
-      if (analyticsData.proposalsByPlatform) {
-        Object.entries(analyticsData.proposalsByPlatform).forEach(([platform, count]) => {
-          if (!platformMap[platform]) {
-            platformMap[platform] = {
-              platform,
-              proposals: 0,
-              won: 0,
-              lost: 0,
-              winRate: 0,
-              avgDealSize: 0,
-              revenue: 0
-            }
-          }
-          platformMap[platform].proposals = count as number
-        })
-      }
-
-      // Fetch detailed platform stats from our insights API
-      const insightsResponse = await fetch("/api/insights/generate")
-      if (insightsResponse.ok) {
-        const insightsData = await insightsResponse.json()
-        // Merge with insights data if available
-      }
-
-      // Calculate win rates (this is approximation from available data)
-      // In production, you'd want a dedicated API for platform stats
-      const platforms = Object.values(platformMap)
+      // Use the detailed platformStats from the API
+      let platforms: PlatformStats[] = []
+      
+      if (analyticsData.platformStats) {
+        platforms = Object.entries(analyticsData.platformStats).map(([platform, stats]: [string, any]) => ({
+          platform,
+          proposals: stats.proposals,
+          won: stats.won,
+          lost: stats.lost,
+          winRate: stats.winRate,
+          avgDealSize: stats.avgDealSize,
+          revenue: stats.revenue
+        }))
         .filter(p => p.proposals > 0)
         .sort((a, b) => b.proposals - a.proposals)
+      } else if (analyticsData.proposalsByPlatform) {
+        // Fallback to old format
+        platforms = Object.entries(analyticsData.proposalsByPlatform).map(([platform, count]) => ({
+          platform,
+          proposals: count as number,
+          won: 0,
+          lost: 0,
+          winRate: 0,
+          avgDealSize: 0,
+          revenue: 0
+        }))
+        .filter(p => p.proposals > 0)
+        .sort((a, b) => b.proposals - a.proposals)
+      }
 
       // Determine best and worst platforms
-      const withWinRates = platforms.filter(p => p.proposals >= 2)
+      const withWinRates = platforms.filter(p => p.proposals >= 1)
       let bestPlatform: string | null = null
       let worstPlatform: string | null = null
       let insight: string | null = null
 
       if (withWinRates.length > 0) {
         const sorted = [...withWinRates].sort((a, b) => b.winRate - a.winRate)
-        bestPlatform = sorted[0].platform
-        if (sorted.length > 1) {
+        bestPlatform = sorted[0].winRate > 0 ? sorted[0].platform : null
+        if (sorted.length > 1 && sorted[sorted.length - 1].winRate < sorted[0].winRate) {
           worstPlatform = sorted[sorted.length - 1].platform
         }
 
         if (bestPlatform && sorted[0].winRate > 0) {
-          insight = `${bestPlatform} has your highest win rate. Consider focusing more effort here.`
+          insight = `${bestPlatform} has your highest win rate at ${sorted[0].winRate}%. Consider focusing more effort here.`
         }
       }
 
