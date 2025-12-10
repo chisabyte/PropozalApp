@@ -36,7 +36,7 @@ const customFetch = async (url: RequestInfo, options?: RequestInit): Promise<Res
   // Create a clean options object
   const cleanOptions: RequestInit = {
     ...options,
-    headers: {}
+    headers: {} as Record<string, string>
   }
   
   // Copy all headers except Authorization
@@ -44,18 +44,18 @@ const customFetch = async (url: RequestInfo, options?: RequestInit): Promise<Res
     const originalHeaders = options.headers as Record<string, string>
     Object.keys(originalHeaders).forEach(key => {
       if (key.toLowerCase() !== 'authorization') {
-        cleanOptions.headers![key] = originalHeaders[key]
+        (cleanOptions.headers as Record<string, string>)[key] = originalHeaders[key]
       }
     })
   }
   
   // Build a completely clean Authorization header
   const cleanKey = getCleanApiKey()
-  cleanOptions.headers!['Authorization'] = `Bearer ${cleanKey}`
+  ;(cleanOptions.headers as Record<string, string>)['Authorization'] = `Bearer ${cleanKey}`
   
   // Ensure Content-Type is set if there's a body
-  if (options?.body && !cleanOptions.headers!['Content-Type']) {
-    cleanOptions.headers!['Content-Type'] = 'application/json'
+  if (options?.body && !(cleanOptions.headers as Record<string, string>)['Content-Type']) {
+    ;(cleanOptions.headers as Record<string, string>)['Content-Type'] = 'application/json'
   }
   
   return fetch(url, cleanOptions)
