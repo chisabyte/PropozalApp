@@ -2,9 +2,12 @@ import OpenAI from 'openai'
 import { ExtractedRFP } from './rfp-extractor'
 import { PROPOSAL_MODEL, MODEL_TEMPERATURES } from '@/config/ai'
 
-export const openai = process.env.OPENAI_API_KEY
+// Clean the API key to remove any potential whitespace or newlines
+const cleanApiKey = process.env.OPENAI_API_KEY?.trim()
+
+export const openai = cleanApiKey
   ? new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: cleanApiKey,
     })
   : null
 
@@ -337,7 +340,7 @@ TONE: ${finalTone} - confident, expert, zero fluff
 Write the proposal now:`
 
   if (!openai) {
-    throw new Error('OpenAI API key is not configured. Please set OPENAI_API_KEY in your .env.local file. Get your key from https://platform.openai.com/api-keys')
+    throw new Error('OpenAI API key is not configured or invalid. Please check OPENAI_API_KEY environment variable.')
   }
 
   try {
