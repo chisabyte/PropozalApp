@@ -1,15 +1,9 @@
 import OpenAI from 'openai'
 import { ExtractedRFP } from './rfp-extractor'
 import { PROPOSAL_MODEL, MODEL_TEMPERATURES } from '@/config/ai'
+import { openaiClient } from './openai-config'
 
-// Clean the API key to remove any potential whitespace or newlines
-const cleanApiKey = process.env.OPENAI_API_KEY?.trim()
-
-export const openai = cleanApiKey
-  ? new OpenAI({
-      apiKey: cleanApiKey,
-    })
-  : null
+export const openai = openaiClient
 
 export interface GenerateProposalParams {
   rfpText: string
@@ -338,10 +332,6 @@ LENGTH: ${lengthInstruction}
 TONE: ${finalTone} - confident, expert, zero fluff
 
 Write the proposal now:`
-
-  if (!openai) {
-    throw new Error('OpenAI API key is not configured or invalid. Please check OPENAI_API_KEY environment variable.')
-  }
 
   try {
     const response = await openai.chat.completions.create({
