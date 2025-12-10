@@ -8,17 +8,21 @@ function getCleanApiKey(): string {
     throw new Error('OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable.')
   }
   
-  // Remove all whitespace, newlines, and potential hidden characters
-  let cleanKey = apiKey.replace(/[\s\n\r\t]/g, '')
+  // Aggressive cleaning - remove ALL non-alphanumeric characters except hyphens and underscores
+  let cleanKey = apiKey
+    .replace(/[\s\n\r\t]/g, '') // Remove whitespace
+    .replace(/[\r\n]/g, '')     // Remove line breaks
+    .replace(/[^A-Za-z0-9_-]/g, '') // Remove any other special chars except allowed ones
+    .trim()
   
   // Handle project keys (sk-proj-...) which can be longer and have special formatting
   if (cleanKey.startsWith('sk-proj-')) {
-    // Project keys need special handling - ensure no line breaks or special chars
-    cleanKey = cleanKey.replace(/[\r\n]+/g, '').trim()
+    // Additional cleaning for project keys
+    cleanKey = cleanKey.replace(/[^A-Za-z0-9_-]/g, '')
     
-    // Additional validation for project keys
-    if (!cleanKey.match(/^sk-proj-[A-Za-z0-9_-]+$/)) {
-      console.warn('OpenAI project key may have invalid characters')
+    // Basic validation
+    if (cleanKey.length < 20) {
+      throw new Error('OpenAI project key appears to be too short after cleaning')
     }
   } else if (!cleanKey.startsWith('sk-')) {
     throw new Error('Invalid OpenAI API key format. API key should start with "sk-" or "sk-proj-"')
@@ -29,21 +33,32 @@ function getCleanApiKey(): string {
 
 // Custom fetch to handle OpenAI project keys properly
 const customFetch = async (url: RequestInfo, options?: RequestInit): Promise<Response> => {
-  // Ensure the Authorization header is properly formatted
-  if (options?.headers) {
-    const headers = new Headers(options.headers)
-    const authHeader = headers.get('Authorization')
-    
-    if (authHeader) {
-      // Clean the auth header to remove any problematic characters
-      const cleanAuth = authHeader.replace(/[\s\n\r\t]/g, '')
-      headers.set('Authorization', cleanAuth)
-    }
-    
-    options.headers = headers
+  // Create a clean options object
+  const cleanOptions: RequestInit = {
+    ...options,
+    headers: {}
   }
   
-  return fetch(url, options)
+  // Copy all headers except Authorization
+  if (options?.headers) {
+    const originalHeaders = options.headers as Record<string, string>
+    Object.keys(originalHeaders).forEach(key => {
+      if (key.toLowerCase() !== 'authorization') {
+        cleanOptions.headers![key] = originalHeaders[key]
+      }
+    })
+  }
+  
+  // Build a completely clean Authorization header
+  const cleanKey = getCleanApiKey()
+  cleanOptions.headers!['Authorization'] = `Bearer ${cleanKey}`
+  
+  // Ensure Content-Type is set if there's a body
+  if (options?.body && !cleanOptions.headers!['Content-Type']) {
+    cleanOptions.headers!['Content-Type'] = 'application/json'
+  }
+  
+  return fetch(url, cleanOptions)
 }
 
 // Create a single OpenAI instance that can be reused with custom fetch
